@@ -52,7 +52,7 @@ func NewModel(logPath string) Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	return m.prereqs.Init()
+	return tea.Batch(tea.SetWindowTitle("Git Tool"), m.prereqs.Init())
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

@@ -1,3 +1,5 @@
+//go:generate goversioninfo -icon=icon.ico -manifest="" -o resource_windows.syso
+
 package main
 
 import (

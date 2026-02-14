@@ -24,6 +24,12 @@ bin/
 dist/
 build/
 
+# Windows build artifacts
+resource_windows.syso
+# versioninfo.json
+*.manifest
+*.res
+
 # IDE files
 .vscode/
 .idea/
@@ -64,9 +70,5 @@ coverage.out
 *.gitconfig.backup
 
 # Windows specific
-*.manifest
-*.res
-
-# macOS specific
 *.dmg
 *.pkg
