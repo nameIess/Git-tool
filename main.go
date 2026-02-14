@@ -1,4 +1,4 @@
-//go:generate goversioninfo -icon=icon.ico -manifest="" -o resource_windows.syso
+//go:generate goversioninfo -icon=internal/icon.ico -manifest="" -o resource_windows.syso
 
 package main
 
@@ -20,10 +20,11 @@ func main() {
 	if err != nil {
 		exePath = "."
 	}
-	exeDir := filepath.Dir(exePath)
+	logDir := filepath.Join(filepath.Dir(exePath), "git-setup-log")
+	os.MkdirAll(logDir, 0755)
 
 	// Initialize logger
-	log, err := logger.Init(exeDir)
+	log, err := logger.Init(logDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: could not create log file: %v\n", err)
 	} else {

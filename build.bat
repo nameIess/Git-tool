@@ -6,7 +6,7 @@ echo.
 
 :: Step 1: Generate resource file with embedded icon
 echo [1/2] Embedding icon.ico into resource...
-go run github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest -icon=icon.ico -manifest="" -o resource_windows.syso
+go run github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest -icon=internal/icon.ico -manifest="" -o resource_windows.syso
 if %errorlevel% neq 0 (
     echo ERROR: Failed to generate resource file.
     pause

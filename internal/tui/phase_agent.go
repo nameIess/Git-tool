@@ -139,6 +139,11 @@ func startAgentAndAddKey(keyPath string, shellType shell.ShellType) tea.Cmd {
 			}
 		}
 
+		// If key was added, also configure Git for SSH commit signing
+		if result.keyAdded {
+			configureCommitSigning(keyPath)
+		}
+
 		return result
 	}
 }
@@ -234,4 +239,27 @@ func (a AgentPhase) IsComplete() bool {
 
 func (a AgentPhase) ShouldExit() bool {
 	return a.step == asStepFailed && a.failMenu.SelectedItem() == "Exit"
+}
+
+// configureCommitSigning sets up Git to use SSH for commit signing.
+func configureCommitSigning(keyPath string) {
+	pubKeyPath := keyPath + ".pub"
+	logger.Info("Configuring Git for SSH commit signing (key: %s)", pubKeyPath)
+
+	res := exec.Run("git", "config", "--global", "gpg.format", "ssh")
+	if !res.Success() {
+		logger.Warn("Failed to set gpg.format: %s", res.CombinedOutput())
+	}
+
+	res = exec.Run("git", "config", "--global", "user.signingkey", pubKeyPath)
+	if !res.Success() {
+		logger.Warn("Failed to set user.signingkey: %s", res.CombinedOutput())
+	}
+
+	res = exec.Run("git", "config", "--global", "commit.gpgsign", "true")
+	if !res.Success() {
+		logger.Warn("Failed to set commit.gpgsign: %s", res.CombinedOutput())
+	}
+
+	logger.Info("SSH commit signing configured successfully")
 }
