@@ -111,7 +111,7 @@ func (m Model) handlePhaseTransition(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case PhaseGitHub:
 		if m.github.IsComplete() {
 			m.phase = PhaseConnTest
-			m.conntest = NewConnectionTestPhase()
+			m.conntest = NewConnectionTestPhase(m.keyPath)
 			return m, m.conntest.Init()
 		}
 	case PhaseConnTest:

@@ -77,7 +77,7 @@ Download the latest release from the [Releases page](https://github.com/nameIess
    ```
    Or use the provided build script:
    ```bash
-   .\build.bat
+   cmd /c build.bat
    ```
 
 ---
