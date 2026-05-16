@@ -1,15 +1,15 @@
 package tui
 
 import (
-	"os"
 	osExec "os/exec"
 	"runtime"
 	"strings"
 
-	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/user/git-tool/internal/logger"
+	"github.com/nameIess/git-tool/internal/clipboard"
+	"github.com/nameIess/git-tool/internal/logger"
+	"github.com/nameIess/git-tool/internal/sshkey"
 )
 
 // ─── Messages ───────────────────────────────────────────────────────────────
@@ -52,7 +52,7 @@ type GitHubPhase struct {
 func NewGitHubPhase(keyPath string) GitHubPhase {
 	return GitHubPhase{
 		step:    ghStepLoading,
-		keyPath: keyPath + ".pub",
+		keyPath: keyPath,
 	}
 }
 
@@ -62,13 +62,12 @@ func (g GitHubPhase) Init() tea.Cmd {
 
 func readPubKey(path string) tea.Cmd {
 	return func() tea.Msg {
-		data, err := os.ReadFile(path)
+		content, err := sshkey.ReadPublicKey(path)
 		if err != nil {
 			logger.Error("Failed to read public key: %v", err)
 			return pubKeyReadMsg{err: err}
 		}
-		content := strings.TrimSpace(string(data))
-		logger.Info("Read public key from %s (%d bytes)", path, len(content))
+		logger.Info("Read public key (%d bytes)", len(content))
 
 		return pubKeyReadMsg{content: content}
 	}
@@ -76,12 +75,10 @@ func readPubKey(path string) tea.Cmd {
 
 func copyToClipboard(text string) tea.Cmd {
 	return func() tea.Msg {
-		err := clipboard.WriteAll(text)
+		err := clipboard.Copy(text)
 		if err != nil {
-			logger.Error("Failed to copy to clipboard: %v", err)
 			return clipboardMsg{ok: false, err: err.Error()}
 		}
-		logger.Info("Public key copied to clipboard")
 		return clipboardMsg{ok: true}
 	}
 }

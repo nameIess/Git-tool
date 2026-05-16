@@ -1,4 +1,4 @@
-package exec
+package runner
 
 import (
 	"bytes"
@@ -8,10 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/user/git-tool/internal/logger"
+	"github.com/nameIess/git-tool/internal/logger"
 )
 
-// Result holds the output of a command execution.
 type Result struct {
 	Stdout   string
 	Stderr   string
@@ -19,12 +18,10 @@ type Result struct {
 	Err      error
 }
 
-// Success returns true if the command completed without error.
 func (r Result) Success() bool {
 	return r.Err == nil && r.ExitCode == 0
 }
 
-// CombinedOutput returns stdout + stderr concatenated.
 func (r Result) CombinedOutput() string {
 	parts := []string{}
 	if r.Stdout != "" {
@@ -36,12 +33,10 @@ func (r Result) CombinedOutput() string {
 	return strings.Join(parts, "\n")
 }
 
-// Run executes a command and returns the result.
 func Run(name string, args ...string) Result {
 	return RunCtx(context.Background(), name, args...)
 }
 
-// RunCtx executes a command with context.
 func RunCtx(ctx context.Context, name string, args ...string) Result {
 	logger.Debug("Executing: %s %s", name, strings.Join(args, " "))
 
@@ -62,8 +57,7 @@ func RunCtx(ctx context.Context, name string, args ...string) Result {
 	}
 
 	if err != nil {
-		logger.Debug("Command failed (exit %d): %v", result.ExitCode, err)
-		logger.Debug("Stderr: %s", result.Stderr)
+		logger.Debug("Command failed (exit %d): %v\nStderr: %s", result.ExitCode, err, result.Stderr)
 	} else {
 		logger.Debug("Command succeeded. Stdout: %s", strings.TrimSpace(result.Stdout))
 	}
@@ -71,7 +65,6 @@ func RunCtx(ctx context.Context, name string, args ...string) Result {
 	return result
 }
 
-// RunWithStdin executes a command, writing input to stdin.
 func RunWithStdin(input string, name string, args ...string) Result {
 	logger.Debug("Executing (with stdin): %s %s", name, strings.Join(args, " "))
 
@@ -101,14 +94,12 @@ func RunWithStdin(input string, name string, args ...string) Result {
 	return result
 }
 
-// RunWithTimeout executes a command with a timeout.
 func RunWithTimeout(timeout time.Duration, name string, args ...string) Result {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	return RunCtx(ctx, name, args...)
 }
 
-// Which checks if a command is available in PATH and returns its path.
 func Which(name string) (string, error) {
 	path, err := exec.LookPath(name)
 	if err != nil {

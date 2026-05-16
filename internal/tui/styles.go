@@ -133,7 +133,6 @@ var phaseNames = []string{
 	"SSH Key",
 	"SSH Agent",
 	"GitHub",
-	"Connection",
 	"Complete",
 }
 

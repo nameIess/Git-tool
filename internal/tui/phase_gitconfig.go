@@ -2,14 +2,13 @@ package tui
 
 import (
 	"fmt"
-	"net/mail"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/user/git-tool/internal/exec"
-	"github.com/user/git-tool/internal/logger"
+	"github.com/nameIess/git-tool/internal/gitcfg"
+	"github.com/nameIess/git-tool/internal/logger"
 )
 
 // ─── Messages ───────────────────────────────────────────────────────────────
@@ -89,12 +88,7 @@ func (g GitConfigPhase) Init() tea.Cmd {
 
 func readGitConfig() tea.Cmd {
 	return func() tea.Msg {
-		nameResult := exec.Run("git", "config", "--global", "user.name")
-		emailResult := exec.Run("git", "config", "--global", "user.email")
-
-		name := strings.TrimSpace(nameResult.Stdout)
-		email := strings.TrimSpace(emailResult.Stdout)
-
+		name, email := gitcfg.ReadCurrent()
 		logger.Info("Current git config: name=%q email=%q", name, email)
 		return gitConfigReadMsg{name: name, email: email}
 	}
@@ -102,26 +96,8 @@ func readGitConfig() tea.Cmd {
 
 func applyGitConfig(name, email string, global bool) tea.Cmd {
 	return func() tea.Msg {
-		scope := "--global"
-		if !global {
-			scope = "--local"
-		}
-
-		logger.Info("Setting git config (%s): name=%q email=%q", scope, name, email)
-
-		res := exec.Run("git", "config", scope, "user.name", name)
-		if !res.Success() {
-			logger.Error("Failed to set user.name: %v", res.Err)
-			return gitConfigSetMsg{err: fmt.Errorf("failed to set user.name: %s", res.CombinedOutput())}
-		}
-
-		res = exec.Run("git", "config", scope, "user.email", email)
-		if !res.Success() {
-			logger.Error("Failed to set user.email: %v", res.Err)
-			return gitConfigSetMsg{err: fmt.Errorf("failed to set user.email: %s", res.CombinedOutput())}
-		}
-
-		return gitConfigSetMsg{err: nil}
+		err := gitcfg.Apply(name, email, global)
+		return gitConfigSetMsg{err: err}
 	}
 }
 
@@ -342,6 +318,5 @@ func (g GitConfigPhase) Name() string  { return g.newName }
 func (g GitConfigPhase) Email() string { return g.newEmail }
 
 func isValidEmail(email string) bool {
-	_, err := mail.ParseAddress(email)
-	return err == nil
+	return gitcfg.ValidateEmail(email)
 }

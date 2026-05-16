@@ -1,4 +1,4 @@
-//go:generate goversioninfo -icon=internal/icon.ico -manifest="" -o resource_windows.syso
+//go:generate goversioninfo -icon=icon.ico -manifest="" -o resource_windows.syso
 
 package main
 
@@ -9,9 +9,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/user/git-tool/internal/logger"
-	"github.com/user/git-tool/internal/shell"
-	"github.com/user/git-tool/internal/tui"
+	"github.com/nameIess/git-tool/internal/logger"
+	"github.com/nameIess/git-tool/internal/platform"
+	"github.com/nameIess/git-tool/internal/tui"
 )
 
 func main() {
@@ -32,14 +32,14 @@ func main() {
 	}
 
 	// Log system info
-	logger.Info("=== Git & SSH Setup Tool ===")
-	logger.Info("OS: %s", shell.WindowsVersion())
+	logger.Info("=== Git & SSH Setup Tool v2.0.0 ===")
+	logger.Info("OS: %s", platform.WindowsVersion())
 
 	// Detect shell environment
-	shellType := shell.Detect()
+	shellType := platform.Detect()
 	logger.Info("Shell: %s", shellType)
-	logger.Info("Home: %s", shell.HomeDir())
-	logger.Info("SSH Dir: %s", shell.SSHDir())
+	logger.Info("Home: %s", platform.HomeDir())
+	logger.Info("SSH Dir: %s", platform.SSHDir())
 
 	// Determine log path for display
 	logPath := ""
@@ -48,8 +48,8 @@ func main() {
 	}
 
 	// Create and run TUI
-	model := tui.NewModel(logPath)
-	p := tea.NewProgram(model, tea.WithAltScreen())
+	app := tui.NewApp(logPath)
+	p := tea.NewProgram(app, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
 		logger.Error("TUI error: %v", err)

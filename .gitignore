@@ -50,6 +50,7 @@ Thumbs.db
 # Log files
 *.log
 logs/
+todo.md
 
 # Temporary files
 *.tmp
