@@ -5,8 +5,8 @@ echo ============================================
 echo.
 
 :: Step 1: Generate resource file with embedded icon
-echo [1/2] Embedding icon.ico into resource...
-go run github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest -icon=internal/icon.ico -manifest="" -o resource_windows.syso
+echo 1. Generating resource file (icon and version info)...
+go run github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest -icon=icon.ico -manifest="" -o resource_windows.syso
 if %errorlevel% neq 0 (
     echo ERROR: Failed to generate resource file.
     pause
@@ -16,8 +16,8 @@ echo       resource_windows.syso created.
 echo.
 
 :: Step 2: Build the executable
-echo [2/2] Building git-tool.exe...
-go build -o git-tool.exe .
+echo 2. Compiling executable...
+go build -ldflags "-s -w" -o git-tool.exe .
 if %errorlevel% neq 0 (
     echo ERROR: Build failed.
     pause

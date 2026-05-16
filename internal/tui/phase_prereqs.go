@@ -8,8 +8,8 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/user/git-tool/internal/exec"
-	"github.com/user/git-tool/internal/logger"
+	"github.com/nameIess/git-tool/internal/logger"
+	"github.com/nameIess/git-tool/internal/runner"
 )
 
 // ─── Messages ───────────────────────────────────────────────────────────────
@@ -61,7 +61,7 @@ func checkPrereqs() tea.Cmd {
 		result := prereqsResultMsg{}
 
 		// Check Git
-		gitResult := exec.Run("git", "--version")
+		gitResult := runner.Run("git", "--version")
 		if gitResult.Success() {
 			result.gitOK = true
 			result.gitVersion = strings.TrimSpace(gitResult.Stdout)
@@ -73,7 +73,7 @@ func checkPrereqs() tea.Cmd {
 		}
 
 		// Check SSH
-		sshResult := exec.Run("ssh", "-V")
+		sshResult := runner.Run("ssh", "-V")
 		// ssh -V outputs to stderr
 		combined := strings.TrimSpace(sshResult.Stderr + sshResult.Stdout)
 		if combined != "" && (sshResult.ExitCode == 0 || strings.Contains(strings.ToLower(combined), "openssh")) {

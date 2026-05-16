@@ -6,80 +6,65 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// Phase constants
 const (
 	PhasePrereqs   = 0
 	PhaseGitConfig = 1
 	PhaseKeygen    = 2
 	PhaseAgent     = 3
 	PhaseGitHub    = 4
-	PhaseConnTest  = 5
-	PhaseComplete  = 6
+	PhaseComplete  = 5
 )
 
-// Model is the root TUI model that manages all phases.
-type Model struct {
+type App struct {
 	phase    int
 	width    int
 	height   int
 	logPath  string
 	quitting bool
 
-	// Phase models
 	prereqs  PrereqsPhase
 	gitconf  GitConfigPhase
 	keygen   KeygenPhase
 	agent    AgentPhase
 	github   GitHubPhase
-	conntest ConnectionTestPhase
 	complete CompletePhase
 
-	// Shared state
 	gitName  string
 	gitEmail string
 	keyPath  string
-	ghUser   string
-	ghOK     bool
 }
 
-// NewModel creates the root model.
-func NewModel(logPath string) Model {
-	return Model{
+func NewApp(logPath string) App {
+	return App{
 		phase:   PhasePrereqs,
 		prereqs: NewPrereqsPhase(),
 		logPath: logPath,
 	}
 }
 
-func (m Model) Init() tea.Cmd {
+func (m App) Init() tea.Cmd {
 	return tea.Batch(tea.SetWindowTitle("Git Tool"), m.prereqs.Init())
 }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 		return m, nil
-
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c":
-			m.quitting = true
-			return m, tea.Quit
-		case "esc":
+		case "ctrl+c", "esc":
 			m.quitting = true
 			return m, tea.Quit
 		case "enter":
-			// Handle phase transitions on enter when phase is complete
 			return m.handlePhaseTransition(msg)
 		}
 	}
-
 	return m.updateCurrentPhase(msg)
 }
 
-func (m Model) handlePhaseTransition(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m App) handlePhaseTransition(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.phase {
 	case PhasePrereqs:
 		if m.prereqs.IsComplete() {
@@ -110,18 +95,9 @@ func (m Model) handlePhaseTransition(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case PhaseGitHub:
 		if m.github.IsComplete() {
-			m.phase = PhaseConnTest
-			m.conntest = NewConnectionTestPhase(m.keyPath)
-			return m, m.conntest.Init()
-		}
-	case PhaseConnTest:
-		if m.conntest.IsComplete() {
-			m.ghUser = m.conntest.Username()
-			m.ghOK = m.conntest.Username() != ""
 			m.phase = PhaseComplete
 			m.complete = NewCompletePhase(
-				m.gitName, m.gitEmail, m.keyPath,
-				m.ghUser, m.ghOK, m.logPath,
+				m.gitName, m.gitEmail, m.keyPath, m.logPath,
 			)
 			return m, m.complete.Init()
 		}
@@ -131,12 +107,10 @@ func (m Model) handlePhaseTransition(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	}
-
-	// If no transition, delegate to current phase
 	return m.updateCurrentPhase(msg)
 }
 
-func (m Model) updateCurrentPhase(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m App) updateCurrentPhase(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch m.phase {
 	case PhasePrereqs:
@@ -165,12 +139,6 @@ func (m Model) updateCurrentPhase(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case PhaseGitHub:
 		m.github, cmd = m.github.Update(msg)
-	case PhaseConnTest:
-		m.conntest, cmd = m.conntest.Update(msg)
-		if m.conntest.ShouldExit() {
-			m.quitting = true
-			return m, tea.Quit
-		}
 	case PhaseComplete:
 		m.complete, cmd = m.complete.Update(msg)
 		if m.complete.ShouldExit() {
@@ -181,13 +149,12 @@ func (m Model) updateCurrentPhase(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) View() string {
+func (m App) View() string {
 	if m.quitting {
-		return "\n  Goodbye! 👋\n\n"
+		return "\n  Goodbye! \U0001f44b\n\n"
 	}
 
 	var b strings.Builder
-
 	b.WriteString("\n")
 	b.WriteString(RenderHeader(m.phase))
 	b.WriteString("\n")
@@ -203,13 +170,10 @@ func (m Model) View() string {
 		b.WriteString(m.agent.View())
 	case PhaseGitHub:
 		b.WriteString(m.github.View())
-	case PhaseConnTest:
-		b.WriteString(m.conntest.View())
 	case PhaseComplete:
 		b.WriteString(m.complete.View())
 	}
 
-	// Help bar
 	help := "↑↓ navigate  │  Enter select"
 	if m.phase == PhaseGitConfig || m.phase == PhaseKeygen {
 		help = "Tab/Enter next  │  ↑↓ navigate"
@@ -217,6 +181,5 @@ func (m Model) View() string {
 	b.WriteString("\n")
 	b.WriteString(RenderHelpBar(help))
 	b.WriteString("\n")
-
 	return b.String()
 }

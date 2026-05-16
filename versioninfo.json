@@ -1,13 +1,13 @@
 {
   "FixedFileInfo": {
     "FileVersion": {
-      "Major": 1,
+      "Major": 2,
       "Minor": 0,
       "Patch": 0,
       "Build": 0
     },
     "ProductVersion": {
-      "Major": 1,
+      "Major": 2,
       "Minor": 0,
       "Patch": 0,
       "Build": 0
@@ -22,14 +22,14 @@
     "Comments": "",
     "CompanyName": "",
     "FileDescription": "Git & SSH Setup Tool",
-    "FileVersion": "v1.0.0",
+    "FileVersion": "2.0.0.0",
     "InternalName": "git-tool",
-    "LegalCopyright": "",
+    "LegalCopyright": "2026",
     "LegalTrademarks": "",
     "OriginalFilename": "git-tool.exe",
     "PrivateBuild": "",
-    "ProductName": "Git Tool",
-    "ProductVersion": "v1.0.0",
+    "ProductName": "Git-Tool",
+    "ProductVersion": "2.0.0",
     "SpecialBuild": ""
   },
   "VarFileInfo": {
@@ -38,6 +38,6 @@
       "CharsetID": "04B0"
     }
   },
-  "IconPath": "internal/icon.ico",
+  "IconPath": "icon.ico",
   "ManifestPath": ""
 }

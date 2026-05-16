@@ -12,19 +12,15 @@ type CompletePhase struct {
 	gitName  string
 	gitEmail string
 	keyPath  string
-	ghUser   string
-	ghOK     bool
 	logPath  string
 	exiting  bool
 }
 
-func NewCompletePhase(name, email, keyPath, ghUser string, ghOK bool, logPath string) CompletePhase {
+func NewCompletePhase(name, email, keyPath, logPath string) CompletePhase {
 	return CompletePhase{
 		gitName:  name,
 		gitEmail: email,
 		keyPath:  keyPath,
-		ghUser:   ghUser,
-		ghOK:     ghOK,
 		logPath:  logPath,
 	}
 }
@@ -60,12 +56,6 @@ func (c CompletePhase) View() string {
 	b.WriteString(RenderCheckItem(true, "Git Email", c.gitEmail))
 	b.WriteString("\n")
 	b.WriteString(RenderCheckItem(true, "SSH Key", c.keyPath))
-	b.WriteString("\n")
-	if c.ghOK {
-		b.WriteString(RenderCheckItem(true, "GitHub", fmt.Sprintf("Connected as %s", c.ghUser)))
-	} else {
-		b.WriteString(RenderCheckItem(false, "GitHub", "Not verified"))
-	}
 	b.WriteString("\n\n")
 
 	if c.logPath != "" {

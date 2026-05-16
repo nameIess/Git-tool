@@ -2,16 +2,16 @@ package tui
 
 import (
 	"fmt"
-	"runtime"
 	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/user/git-tool/internal/exec"
-	"github.com/user/git-tool/internal/logger"
-	"github.com/user/git-tool/internal/shell"
+	"github.com/nameIess/git-tool/internal/agent"
+	"github.com/nameIess/git-tool/internal/logger"
+	"github.com/nameIess/git-tool/internal/platform"
+	"github.com/nameIess/git-tool/internal/signing"
 )
 
 // ─── Messages ───────────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ type AgentPhase struct {
 	errMsg    string
 	failMenu  MenuModel
 	complete  bool
-	shellType shell.ShellType
+	shellType platform.ShellType
 }
 
 func NewAgentPhase(keyPath string) AgentPhase {
@@ -53,7 +53,7 @@ func NewAgentPhase(keyPath string) AgentPhase {
 		step:      asStepStarting,
 		spinner:   s,
 		keyPath:   keyPath,
-		shellType: shell.Current(),
+		shellType: platform.Current(),
 	}
 }
 
@@ -61,87 +61,27 @@ func (a AgentPhase) Init() tea.Cmd {
 	return tea.Batch(a.spinner.Tick, startAgentAndAddKey(a.keyPath, a.shellType))
 }
 
-func startAgentAndAddKey(keyPath string, shellType shell.ShellType) tea.Cmd {
+func startAgentAndAddKey(keyPath string, shellType platform.ShellType) tea.Cmd {
 	return func() tea.Msg {
 		time.Sleep(500 * time.Millisecond)
 
 		result := agentResultMsg{agentStarted: false, keyAdded: false}
 
-		if runtime.GOOS == "windows" && shellType != shell.GitBash {
-			// PowerShell / CMD: Try to start the ssh-agent service
-			logger.Info("Starting ssh-agent service (Windows/PowerShell)")
-
-			// First try to set the service to manual start
-			setResult := exec.Run("powershell", "-Command",
-				"Get-Service ssh-agent | Set-Service -StartupType Manual")
-			if !setResult.Success() {
-				logger.Warn("Could not set ssh-agent startup type (may need admin): %s", setResult.CombinedOutput())
-				// Continue anyway, it might already be configured
-			}
-
-			// Start the service
-			startResult := exec.Run("powershell", "-Command",
-				"Start-Service ssh-agent")
-			if startResult.Success() {
-				result.agentStarted = true
-				logger.Info("ssh-agent service started")
-			} else {
-				// Check if it's already running
-				statusResult := exec.Run("powershell", "-Command",
-					"(Get-Service ssh-agent).Status")
-				status := strings.TrimSpace(statusResult.Stdout)
-				if strings.EqualFold(status, "Running") {
-					result.agentStarted = true
-					logger.Info("ssh-agent service already running")
-				} else {
-					result.errMsg = fmt.Sprintf("Could not start ssh-agent service. Status: %s. You may need to run as Administrator.", status)
-					logger.Error("ssh-agent start failed: %s", result.errMsg)
-					return result
-				}
-			}
-
-			// Add key using ssh-add
-			addResult := exec.Run("ssh-add", keyPath)
-			if addResult.Success() {
-				result.keyAdded = true
-				logger.Info("SSH key added to agent: %s", keyPath)
-			} else {
-				result.errMsg = fmt.Sprintf("Failed to add key to agent: %s", addResult.CombinedOutput())
-				logger.Error("ssh-add failed: %s", result.errMsg)
-			}
-		} else {
-			// Git Bash: use eval ssh-agent and ssh-add
-			logger.Info("Starting ssh-agent (Git Bash environment)")
-
-			// In Git Bash, ssh-agent is usually already available
-			// Just try to add the key directly
-			result.agentStarted = true
-
-			addResult := exec.Run("ssh-add", keyPath)
-			if addResult.Success() {
-				result.keyAdded = true
-				logger.Info("SSH key added to agent: %s", keyPath)
-			} else {
-				// Try starting agent first
-				agentResult := exec.Run("ssh-agent", "-s")
-				if agentResult.Success() {
-					logger.Info("ssh-agent started: %s", strings.TrimSpace(agentResult.Stdout))
-				}
-				// Retry add
-				addResult = exec.Run("ssh-add", keyPath)
-				if addResult.Success() {
-					result.keyAdded = true
-					logger.Info("SSH key added to agent (after starting agent)")
-				} else {
-					result.errMsg = fmt.Sprintf("Failed to add key: %s", addResult.CombinedOutput())
-					logger.Error("ssh-add failed: %s", result.errMsg)
-				}
-			}
+		err := agent.StartAndAddKey(keyPath, shellType)
+		if err != nil {
+			result.errMsg = err.Error()
+			return result
 		}
 
-		// If key was added, also configure Git for SSH commit signing
-		if result.keyAdded {
-			configureCommitSigning(keyPath)
+		result.agentStarted = true
+		result.keyAdded = true
+
+		// Configure Git for SSH commit signing
+		signing.Configure(keyPath, true)
+		
+		// Write bashrc snippet for Git Bash
+		if err := agent.WriteBashrcSnippet(keyPath); err != nil {
+			logger.Warn("Failed to write bashrc snippet: %v", err)
 		}
 
 		return result
@@ -239,27 +179,4 @@ func (a AgentPhase) IsComplete() bool {
 
 func (a AgentPhase) ShouldExit() bool {
 	return a.step == asStepFailed && a.failMenu.SelectedItem() == "Exit"
-}
-
-// configureCommitSigning sets up Git to use SSH for commit signing.
-func configureCommitSigning(keyPath string) {
-	pubKeyPath := keyPath + ".pub"
-	logger.Info("Configuring Git for SSH commit signing (key: %s)", pubKeyPath)
-
-	res := exec.Run("git", "config", "--global", "gpg.format", "ssh")
-	if !res.Success() {
-		logger.Warn("Failed to set gpg.format: %s", res.CombinedOutput())
-	}
-
-	res = exec.Run("git", "config", "--global", "user.signingkey", pubKeyPath)
-	if !res.Success() {
-		logger.Warn("Failed to set user.signingkey: %s", res.CombinedOutput())
-	}
-
-	res = exec.Run("git", "config", "--global", "commit.gpgsign", "true")
-	if !res.Success() {
-		logger.Warn("Failed to set commit.gpgsign: %s", res.CombinedOutput())
-	}
-
-	logger.Info("SSH commit signing configured successfully")
 }

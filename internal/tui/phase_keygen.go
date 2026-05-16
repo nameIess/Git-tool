@@ -2,8 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -11,9 +9,9 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/user/git-tool/internal/exec"
-	"github.com/user/git-tool/internal/logger"
-	"github.com/user/git-tool/internal/shell"
+	"github.com/nameIess/git-tool/internal/logger"
+	"github.com/nameIess/git-tool/internal/platform"
+	"github.com/nameIess/git-tool/internal/sshkey"
 )
 
 // ─── Messages ───────────────────────────────────────────────────────────────
@@ -89,7 +87,7 @@ func NewKeygenPhase(email string) KeygenPhase {
 		step:    kgStepCheckExisting,
 		spinner: s,
 		email:   email,
-		keyPath: shell.DefaultKeyPath(),
+		keyPath: platform.DefaultKeyPath(),
 
 		passphraseYN: NewConfirm("Add a passphrase to your SSH key? (recommended)", "Yes", "No"),
 		passInput:    pi,
@@ -104,7 +102,7 @@ func (k KeygenPhase) Init() tea.Cmd {
 func checkExistingKey(keyPath string) tea.Cmd {
 	return func() tea.Msg {
 		time.Sleep(300 * time.Millisecond)
-		if _, err := os.Stat(keyPath); err == nil {
+		if sshkey.Exists(keyPath) {
 			logger.Warn("Existing SSH key found at %s", keyPath)
 			return keyExistsMsg{path: keyPath}
 		}
@@ -118,34 +116,17 @@ type keyNotExistsMsg struct{}
 
 func generateSSHKey(keyPath, email, passphrase string) tea.Cmd {
 	return func() tea.Msg {
-		logger.Info("Generating SSH key: type=ed25519 email=%s path=%s", email, keyPath)
-
-		// Ensure .ssh directory exists
-		if err := shell.EnsureSSHDir(); err != nil {
-			logger.Error("Failed to create .ssh directory: %v", err)
-			return keygenResultMsg{success: false, errMsg: fmt.Sprintf("Failed to create .ssh directory: %v", err)}
+		err := sshkey.Generate(keyPath, email, passphrase)
+		if err != nil {
+			return keygenResultMsg{success: false, errMsg: err.Error()}
 		}
-
-		// Build ssh-keygen command
-		args := []string{"-t", "ed25519", "-C", email, "-f", keyPath}
-		if passphrase == "" {
-			args = append(args, "-N", "")
-		} else {
-			args = append(args, "-N", passphrase)
+		
+		// Write SSH config
+		if err := sshkey.WriteSSHConfig(keyPath); err != nil {
+			logger.Warn("Could not write SSH config: %v", err)
 		}
-
-		result := exec.Run("ssh-keygen", args...)
-		if result.Success() {
-			logger.Info("SSH key generated successfully at %s", keyPath)
-			return keygenResultMsg{success: true, keyPath: keyPath}
-		}
-
-		errMsg := strings.TrimSpace(result.CombinedOutput())
-		if errMsg == "" {
-			errMsg = fmt.Sprintf("ssh-keygen exited with code %d", result.ExitCode)
-		}
-		logger.Error("SSH key generation failed: %s", errMsg)
-		return keygenResultMsg{success: false, errMsg: errMsg}
+		
+		return keygenResultMsg{success: true, keyPath: keyPath}
 	}
 }
 
@@ -355,13 +336,5 @@ func (k KeygenPhase) KeyPath() string {
 }
 
 func findNextKeyName(basePath string) string {
-	dir := filepath.Dir(basePath)
-	base := filepath.Base(basePath)
-	for i := 2; i <= 99; i++ {
-		candidate := filepath.Join(dir, fmt.Sprintf("%s_%d", base, i))
-		if _, err := os.Stat(candidate); os.IsNotExist(err) {
-			return candidate
-		}
-	}
-	return basePath + "_new"
+	return sshkey.FindNextKeyName(basePath)
 }
