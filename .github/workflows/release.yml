@@ -29,6 +29,7 @@ jobs:
         run: go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
 
       - name: Generate resource file
+        shell: cmd
         run: goversioninfo -icon=icon.ico -manifest="" -o resource_windows.syso
 
       - name: Build release executable
