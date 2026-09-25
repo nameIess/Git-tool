@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/nameIess/git-tool/internal/clipboard"
 	"github.com/nameIess/git-tool/internal/logger"
@@ -21,9 +22,9 @@ type GitHubPhase struct{step githubStep;keyPath,pubKey,clipErr,readErr,sshOutput
 
 func NewGitHubPhase(keyPath string)GitHubPhase{return GitHubPhase{step:ghStepLoading,keyPath:keyPath}}
 func(g GitHubPhase)Init()tea.Cmd{return readPubKey(g.keyPath)}
-func readPubKey(path string)tea.Cmd{return func()tea.Msg{content,err:=sshkey.ReadPublicKey(path);if err!=nil{return pubKeyReadMsg{err:err}};logger.Info("Read public key (%d bytes)",len(content));return pubKeyReadMsg{content:content}}}
+func readPubKey(path string)tea.Cmd{return func()tea.Msg{content,err:=sshkey.ReadPublicKey(path);if err!=nil{logger.Error("Failed to read public key: %v",err);return pubKeyReadMsg{err:err}};logger.Info("Read public key (%d bytes)",len(content));return pubKeyReadMsg{content:content}}}
 func copyToClipboard(text string)tea.Cmd{return func()tea.Msg{if err:=clipboard.Copy(text);err!=nil{return clipboardMsg{err:err.Error()}};return clipboardMsg{ok:true}}}
-func testGitHubSSH()tea.Cmd{return func()tea.Msg{res:=runner.RunWithTimeout(20*time.Second,"ssh","-T","-o","BatchMode=yes","-o","StrictHostKeyChecking=accept-new","git@github.com");out:=res.CombinedOutput();lower:=strings.ToLower(out);return sshTestMsg{success:strings.Contains(lower,"successfully authenticated")||strings.Contains(lower,"hi "),output:out}}}
+func testGitHubSSH()tea.Cmd{return func()tea.Msg{res:=runner.RunWithTimeout(20*time.Second,"ssh","-T","-o","BatchMode=yes","-o","StrictHostKeyChecking=accept-new","git@github.com");out:=res.CombinedOutput();lower:=strings.ToLower(out);return sshTestMsg{success:strings.Contains(lower,"successfully authenticated"),output:out}}}
 func(g GitHubPhase)Update(msg tea.Msg)(GitHubPhase,tea.Cmd){
 	switch msg:=msg.(type){
 	case pubKeyReadMsg:if msg.err!=nil{g.readErr=msg.err.Error();g.step=ghStepShowKey;return g,nil};g.pubKey=msg.content;g.step=ghStepShowKey;return g,copyToClipboard(g.pubKey)
@@ -37,28 +38,21 @@ func(g GitHubPhase)Update(msg tea.Msg)(GitHubPhase,tea.Cmd){
 	}
 	return g,nil
 }
-func(g GitHubPhase)View()string{var b strings.Builder;b.WriteString(SubtitleStyle.Render("GitHub Integration"));b.WriteString("
-
-");if g.readErr!=""{b.WriteString(ErrorStyle.Render("  ✗ Failed to read public key
-"));b.WriteString(MutedStyle.Render("    "+g.readErr+"
-"));return b.String()};switch g.step{case ghStepLoading:b.WriteString("  Reading public key...
-");case ghStepShowKey,ghStepWaitConfirm:if g.clipOK{b.WriteString(SuccessStyle.Render("  ✓ Public key copied to clipboard!"))}else if g.clipErr!=""{b.WriteString(WarningStyle.Render("  ⚠ Could not copy to clipboard: "+g.clipErr))};b.WriteString("
-
-");keyDisplay:=g.pubKey;if len(keyDisplay)>200{keyDisplay=keyDisplay[:80]+"
-  "+keyDisplay[80:160]+"
-  "+keyDisplay[160:]};b.WriteString(KeyBoxStyle.Render(MutedStyle.Render(keyDisplay)));b.WriteString("
-
-");b.WriteString(InfoStyle.Render("  Add this SSH key to GitHub:"));b.WriteString("
-  ");b.WriteString(AccentStyle.Render("→ https://github.com/settings/ssh/new"));b.WriteString("
-
-");b.WriteString(MutedStyle.Render("  GitHub → Settings → SSH Keys → New SSH Key → Paste key → Add"));b.WriteString("
-
-");if g.step==ghStepShowKey{b.WriteString(g.openMenu.View())}else{b.WriteString(g.confirm.View())};case ghStepTesting:b.WriteString("  Testing ssh -T git@github.com...
-");case ghStepVerified:b.WriteString(RenderCheckItem(true,"GitHub SSH","Authenticated successfully"));b.WriteString("
-
-");b.WriteString(SuccessStyle.Render("  ✓ GitHub SSH connection verified! Press Enter to continue."))};if g.sshOutput!=""&&g.step!=ghStepVerified{b.WriteString("
-"+WarningStyle.Render("  SSH output: "+g.sshOutput)+"
-")};return b.String()}
+func(g GitHubPhase)View()string{
+	var b strings.Builder;b.WriteString(SubtitleStyle.Render("GitHub Integration"));b.WriteString("\n\n")
+	if g.readErr!=""{b.WriteString(ErrorStyle.Render("  ✗ Failed to read public key\n"));b.WriteString(MutedStyle.Render("    "+g.readErr+"\n"));return b.String()}
+	switch g.step{
+	case ghStepLoading:b.WriteString("  Reading public key...\n")
+	case ghStepShowKey,ghStepWaitConfirm:
+		if g.clipOK{b.WriteString(SuccessStyle.Render("  ✓ Public key copied to clipboard!"))}else if g.clipErr!=""{b.WriteString(WarningStyle.Render("  ⚠ Could not copy to clipboard: "+g.clipErr))}
+		b.WriteString("\n\n");keyDisplay:=g.pubKey;if len(keyDisplay)>200{keyDisplay=keyDisplay[:80]+"\n  "+keyDisplay[80:160]+"\n  "+keyDisplay[160:]}
+		b.WriteString(KeyBoxStyle.Render(MutedStyle.Render(keyDisplay)));b.WriteString("\n\n");b.WriteString(InfoStyle.Render("  Add this SSH key to GitHub:"));b.WriteString("\n  ");b.WriteString(AccentStyle.Render("→ https://github.com/settings/ssh/new"));b.WriteString("\n\n");b.WriteString(MutedStyle.Render("  GitHub → Settings → SSH Keys → New SSH Key → Paste key → Add"));b.WriteString("\n\n");if g.step==ghStepShowKey{b.WriteString(g.openMenu.View())}else{b.WriteString(g.confirm.View())}
+	case ghStepTesting:b.WriteString("  Testing ssh -T git@github.com...\n")
+	case ghStepVerified:b.WriteString(RenderCheckItem(true,"GitHub SSH","Authenticated successfully"));b.WriteString("\n\n");b.WriteString(SuccessStyle.Render("  ✓ GitHub SSH connection verified! Press Enter to continue."))
+	}
+	if g.sshOutput!=""&&g.step!=ghStepVerified{b.WriteString("\n"+WarningStyle.Render("  SSH output: "+g.sshOutput)+"\n")}
+	return b.String()
+}
 func(g GitHubPhase)IsComplete()bool{return g.complete}
 func(g GitHubPhase)ShouldExit()bool{return false}
-func openBrowser(url string){logger.Info("Opening browser: %s",url);if runtime.GOOS=="windows"{if err:=exec.Command("rundll32","url.dll,FileProtocolHandler",url).Start();err!=nil{logger.Error("Failed to open browser: %v",err)}}else{if err:=exec.Command("xdg-open",url).Start();err!=nil{logger.Error("Failed to open browser: %v",err)}}}
+func openBrowser(url string){logger.Info("Opening browser: %s",url);if runtime.GOOS=="windows"{if err:=exec.Command("rundll32","url.dll","FileProtocolHandler",url).Start();err!=nil{logger.Error("Failed to open browser: %v",err)}}else{if err:=exec.Command("xdg-open",url).Start();err!=nil{logger.Error("Failed to open browser: %v",err)}}}
