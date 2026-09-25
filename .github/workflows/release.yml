@@ -12,36 +12,29 @@ jobs:
   release:
     name: Build & Release
     runs-on: windows-latest
-
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
-
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
         with:
           go-version: '1.25.x'
           cache: true
-
       - name: Install goversioninfo
-        run: go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
-
+        run: go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.7.0
       - name: Generate resource file
         run: goversioninfo -icon=icon.ico -manifest="" -o resource_windows.syso
-
       - name: Build release executable
         run: go build -ldflags "-s -w" -o git-tool.exe .
-
       - name: Compute SHA-256 checksum
         run: |
           $hash = (Get-FileHash -Algorithm SHA256 "git-tool.exe").Hash
-          "git-tool.exe  $hash" | Out-File -Encoding utf8 checksums.txt
+          "$hash  git-tool.exe" | Out-File -Encoding utf8 checksums.txt
           Write-Host "SHA256: $hash"
-
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8
         with:
           name: "Git Tool ${{ github.ref_name }}"
           draft: false
