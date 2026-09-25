@@ -14,10 +14,10 @@ import (
 	"github.com/nameIess/git-tool/internal/sshkey"
 )
 
-type keygenResultMsg struct{ success bool; keyPath string; errMsg string }
+type keygenResultMsg struct{ success bool; keyPath, errMsg string }
 type keygenStep int
-const (
-	kgStepCheckExisting keygenStep = iota
+const(
+	kgStepCheckExisting keygenStep=iota
 	kgStepExistingFound
 	kgStepAskPassphrase
 	kgStepInputPassphrase
@@ -27,22 +27,8 @@ const (
 	kgStepFailed
 )
 
-type KeygenPhase struct {
-	step keygenStep
-	spinner spinner.Model
-	email string
-	keyPath string
-	overwriteMenu MenuModel
-	passphraseYN ConfirmModel
-	passInput textinput.Model
-	passConfirm textinput.Model
-	passphrase string
-	errMsg string
-	failMenu MenuModel
-	complete bool
-}
-
-func NewKeygenPhase(email string) KeygenPhase {
+type KeygenPhase struct{step keygenStep;spinner spinner.Model;email,keyPath string;overwriteMenu MenuModel;passphraseYN ConfirmModel;passInput,passConfirm textinput.Model;passphrase,errMsg string;failMenu MenuModel;complete bool}
+func NewKeygenPhase(email string)KeygenPhase{
 	s:=spinner.New();s.Spinner=spinner.Dot;s.Style=SpinnerStyle
 	pi:=textinput.New();pi.Placeholder="Enter passphrase (or leave empty)";pi.EchoMode=textinput.EchoPassword;pi.EchoCharacter='•';pi.CharLimit=200;pi.Width=40;pi.PromptStyle=PromptStyle;pi.TextStyle=TextStyle
 	pc:=textinput.New();pc.Placeholder="Confirm passphrase";pc.EchoMode=textinput.EchoPassword;pc.EchoCharacter='•';pc.CharLimit=200;pc.Width=40;pc.PromptStyle=PromptStyle;pc.TextStyle=TextStyle
@@ -59,7 +45,8 @@ func(k KeygenPhase)Update(msg tea.Msg)(KeygenPhase,tea.Cmd){
 	switch msg:=msg.(type){
 	case keyExistsMsg:k.step=kgStepExistingFound;k.overwriteMenu=NewMenu([]string{"Overwrite","Use different name","Skip (use existing)"})
 	case keyNotExistsMsg:k.step=kgStepAskPassphrase
-	case keygenResultMsg:if msg.success{k.step=kgStepSuccess;k.keyPath=msg.keyPath;k.complete=true}else{k.step=kgStepFailed;k.errMsg=msg.errMsg;k.failMenu=NewMenu([]string{"Retry","Exit"})};return k,nil
+	case keygenResultMsg:
+		if msg.success{k.step=kgStepSuccess;k.keyPath=msg.keyPath;k.complete=true}else{k.step=kgStepFailed;k.errMsg=msg.errMsg;k.failMenu=NewMenu([]string{"Retry","Exit"})};return k,nil
 	case spinner.TickMsg:if k.step==kgStepCheckExisting||k.step==kgStepGenerating{var cmd tea.Cmd;k.spinner,cmd=k.spinner.Update(msg);return k,cmd}
 	case tea.KeyMsg:
 		switch k.step{
@@ -77,30 +64,20 @@ func(k KeygenPhase)Update(msg tea.Msg)(KeygenPhase,tea.Cmd){
 	}
 	return k,nil
 }
-func(k KeygenPhase)View()string{var b strings.Builder;b.WriteString(SubtitleStyle.Render("SSH Key Generation"));b.WriteString("
-
-");switch k.step{case kgStepCheckExisting:b.WriteString(fmt.Sprintf("  %s Checking for existing SSH keys...",k.spinner.View()));case kgStepExistingFound:b.WriteString(WarningStyle.Render("  ⚠ Existing SSH key found:"));b.WriteString("
-");b.WriteString(MutedStyle.Render("    "+k.keyPath));b.WriteString("
-
-");b.WriteString(k.overwriteMenu.View());case kgStepAskPassphrase:b.WriteString(InfoStyle.Render("  Key type: ed25519 (modern & secure)"));b.WriteString("
-");b.WriteString(MutedStyle.Render("  Location: "+k.keyPath));b.WriteString("
-
-");b.WriteString(k.passphraseYN.View());case kgStepInputPassphrase:b.WriteString(PromptStyle.Render("  Enter passphrase:"));b.WriteString("
-
-  "+k.passInput.View()+"
-");if k.errMsg!=""{b.WriteString(ErrorStyle.Render("  ✗ "+k.errMsg));b.WriteString("
-")};case kgStepConfirmPassphrase:b.WriteString(PromptStyle.Render("  Confirm passphrase:"));b.WriteString("
-
-  "+k.passConfirm.View()+"
-");if k.errMsg!=""{b.WriteString(ErrorStyle.Render("  ✗ "+k.errMsg));b.WriteString("
-")};case kgStepGenerating:b.WriteString(fmt.Sprintf("  %s Generating SSH key...",k.spinner.View()));case kgStepSuccess:b.WriteString(RenderCheckItem(true,"SSH Key",k.keyPath));b.WriteString("
-");b.WriteString(RenderCheckItem(true,"SSH Config","Managed github.com entry"));b.WriteString("
-
-");b.WriteString(SuccessStyle.Render("  ✓ SSH key configured! Press Enter to continue."));case kgStepFailed:b.WriteString(ErrorStyle.Render("  ✗ Failed to configure SSH key"));b.WriteString("
-
-");b.WriteString(InnerBoxStyle.Render(k.errMsg));b.WriteString("
-
-");b.WriteString(k.failMenu.View())};return b.String()}
+func(k KeygenPhase)View()string{
+	var b strings.Builder;b.WriteString(SubtitleStyle.Render("SSH Key Generation"));b.WriteString("\n\n")
+	switch k.step{
+	case kgStepCheckExisting:b.WriteString(fmt.Sprintf("  %s Checking for existing SSH keys...",k.spinner.View()))
+	case kgStepExistingFound:b.WriteString(WarningStyle.Render("  ⚠ Existing SSH key found:"));b.WriteString("\n");b.WriteString(MutedStyle.Render("    "+k.keyPath));b.WriteString("\n\n");b.WriteString(k.overwriteMenu.View())
+	case kgStepAskPassphrase:b.WriteString(InfoStyle.Render("  Key type: ed25519 (modern & secure)"));b.WriteString("\n");b.WriteString(MutedStyle.Render("  Location: "+k.keyPath));b.WriteString("\n\n");b.WriteString(k.passphraseYN.View())
+	case kgStepInputPassphrase:b.WriteString(PromptStyle.Render("  Enter passphrase:"));b.WriteString("\n\n  "+k.passInput.View()+"\n");if k.errMsg!=""{b.WriteString(ErrorStyle.Render("  ✗ "+k.errMsg));b.WriteString("\n")}
+	case kgStepConfirmPassphrase:b.WriteString(PromptStyle.Render("  Confirm passphrase:"));b.WriteString("\n\n  "+k.passConfirm.View()+"\n");if k.errMsg!=""{b.WriteString(ErrorStyle.Render("  ✗ "+k.errMsg));b.WriteString("\n")}
+	case kgStepGenerating:b.WriteString(fmt.Sprintf("  %s Generating SSH key...",k.spinner.View()))
+	case kgStepSuccess:b.WriteString(RenderCheckItem(true,"SSH Key",k.keyPath));b.WriteString("\n");b.WriteString(RenderCheckItem(true,"SSH Config","Managed github.com entry"));b.WriteString("\n\n");b.WriteString(SuccessStyle.Render("  ✓ SSH key configured! Press Enter to continue."))
+	case kgStepFailed:b.WriteString(ErrorStyle.Render("  ✗ Failed to configure SSH key"));b.WriteString("\n\n");b.WriteString(InnerBoxStyle.Render(k.errMsg));b.WriteString("\n\n");b.WriteString(k.failMenu.View())
+	}
+	return b.String()
+}
 func(k KeygenPhase)IsComplete()bool{return k.complete}
 func(k KeygenPhase)ShouldExit()bool{return k.step==kgStepFailed&&k.failMenu.SelectedItem()=="Exit"}
 func(k KeygenPhase)KeyPath()string{return k.keyPath}
