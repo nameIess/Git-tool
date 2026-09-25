@@ -1,12 +1,11 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
   "name": "git-tool",
+  "version": "2",
   "outputfilename": "GitTool",
-  "frontend": {
-    "dir": "frontend",
-    "assetdir": "./dist"
-  },
+  "frontend:dir": "frontend",
+  "assetdir": "frontend/dist",
   "author": {"name": "nameIess", "email": ""},
   "info": {"productName": "Git Tool", "productVersion": "2.0.0", "copyright": "MIT"},
-  "windows": {"webviewIsTransparent": false, "windowIsTranslucent": false, "disableWindowIcon": false}
+  "build:dir": "build"
 }
