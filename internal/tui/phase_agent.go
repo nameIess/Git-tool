@@ -22,7 +22,7 @@ type AgentPhase struct{step agentStep;spinner spinner.Model;keyPath,errMsg strin
 
 func NewAgentPhase(keyPath string)AgentPhase{s:=spinner.New();s.Spinner=spinner.Dot;s.Style=SpinnerStyle;return AgentPhase{step:asStepStarting,spinner:s,keyPath:keyPath,shellType:platform.Current(),signingYN:NewConfirm("Enable SSH commit/tag signing?","Yes","No")}}
 func(a AgentPhase)Init()tea.Cmd{return tea.Batch(a.spinner.Tick,startAgentAndAddKey(a.keyPath,a.shellType))}
-func startAgentAndAddKey(keyPath string,shellType platform.ShellType)tea.Cmd{return func()tea.Msg{time.Sleep(500*time.Millisecond);if err:=agent.StartAndAddKey(keyPath,shellType);err!=nil{return agentResultMsg{errMsg:err.Error()}};if shellType==platform.GitBash{if err:=agent.WriteBashrcSnippet(keyPath);err!=nil{return agentResultMsg{agentStarted:true,keyAdded:true,errMsg:fmt.Sprintf("SSH agent is ready, but .bashrc update failed: %v",err)}}};return agentResultMsg{agentStarted:true,keyAdded:true}}}
+func startAgentAndAddKey(keyPath string,shellType platform.ShellType)tea.Cmd{return func()tea.Msg{time.Sleep(500*time.Millisecond);if err:=agent.StartAndAddKey(keyPath,shellType);err!=nil{return agentResultMsg{errMsg:err.Error()}};if shellType==platform.GitBash{if err:=agent.WriteBashrcSnippet(keyPath);err!=nil{logger.Warn("Failed to update .bashrc: %v",err)}};return agentResultMsg{agentStarted:true,keyAdded:true}}}
 func(a AgentPhase)Update(msg tea.Msg)(AgentPhase,tea.Cmd){
 	switch msg:=msg.(type){
 	case agentResultMsg:
