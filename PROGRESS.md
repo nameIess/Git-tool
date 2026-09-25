@@ -26,5 +26,6 @@ Branch: security-audit-remediation
 
 ## Verification
 - Source-level remediation completed against main.
-- Runtime verification still requires Windows with Git/OpenSSH.
-- CI provides repeatable Go test/vet validation.
+- PR: #5 (Security audit remediation).
+- CI formats Go sources before running test, vet, and vulnerability checks.
+- Runtime verification still requires Windows with Git/OpenSSH; this environment cannot resolve github.com for local cloning.
