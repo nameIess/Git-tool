@@ -10,6 +10,7 @@ import (
 
 	"github.com/nameIess/git-tool/internal/agent"
 	"github.com/nameIess/git-tool/internal/platform"
+	"github.com/nameIess/git-tool/internal/logger"
 	"github.com/nameIess/git-tool/internal/signing"
 )
 
