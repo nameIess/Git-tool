@@ -30,7 +30,7 @@ func Generate(keyPath, email, passphrase string) error {
 
 func generateToPath(keyPath, email, passphrase string) error {
 	args := []string{"-t", "ed25519", "-C", email, "-f", keyPath, "-N", passphrase}
-	res := runner.RunRedacted("ssh-keygen", []int{6}, args...)
+	res := runner.RunRedacted("ssh-keygen", []int{7}, args...)
 	if !res.Success() { return fmt.Errorf("ssh-keygen failed: %s", res.CombinedOutput()) }
 	return ensureKeyPair(keyPath)
 }
