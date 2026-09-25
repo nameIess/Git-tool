@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	//go:embed frontend/dist/*
+	//go:embed all:frontend/dist
 	assets embed.FS
 )
 
