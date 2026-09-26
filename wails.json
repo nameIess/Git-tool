@@ -1,0 +1,19 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "git-tool",
+  "version": "2",
+  "outputfilename": "GitTool",
+  "frontend:dir": "frontend",
+  "assetdir": "frontend/dist",
+  "wailsjsdir": "frontend/dist/wailsjs",
+  "author": {
+    "name": "nameIess",
+    "email": ""
+  },
+  "info": {
+    "productName": "Git Tool",
+    "productVersion": "2.0.0",
+    "copyright": "MIT"
+  },
+  "build:dir": "build"
+}

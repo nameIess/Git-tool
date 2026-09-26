@@ -3,56 +3,53 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"os"
 	"path/filepath"
 
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	windows "github.com/wailsapp/wails/v2/pkg/options/windows"
 
+	"github.com/nameIess/git-tool/internal/gui"
 	"github.com/nameIess/git-tool/internal/logger"
-	"github.com/nameIess/git-tool/internal/platform"
-	"github.com/nameIess/git-tool/internal/tui"
+)
+
+var (
+	//go:embed all:frontend/dist
+	assets embed.FS
 )
 
 func main() {
-	// Determine exe directory for log file
 	exePath, err := os.Executable()
-	if err != nil {
-		exePath = "."
-	}
+	if err != nil { exePath = "." }
 	logDir := filepath.Join(filepath.Dir(exePath), "git-setup-log")
-	os.MkdirAll(logDir, 0755)
-
-	// Initialize logger
+	if err := os.MkdirAll(logDir, 0700); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: cannot create log directory: %v\n", err)
+	}
 	log, err := logger.Init(logDir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: could not create log file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "warning: cannot initialize logger: %v\n", err)
 	} else {
 		defer log.Close()
 	}
 
-	// Log system info
-	logger.Info("=== Git & SSH Setup Tool v2.0.0 ===")
-	logger.Info("OS: %s", platform.WindowsVersion())
-
-	// Detect shell environment
-	shellType := platform.Detect()
-	logger.Info("Shell: %s", shellType)
-	logger.Info("Home: %s", platform.HomeDir())
-	logger.Info("SSH Dir: %s", platform.SSHDir())
-
-	// Determine log path for display
-	logPath := ""
-	if log != nil {
-		logPath = log.FilePath()
-	}
-
-	// Create and run TUI
-	app := tui.NewApp(logPath)
-	p := tea.NewProgram(app, tea.WithAltScreen())
-
-	if _, err := p.Run(); err != nil {
-		logger.Error("TUI error: %v", err)
+	app := gui.NewApp()
+	err = wails.Run(&options.App{
+		Title: "Git Tool",
+		Width: 1180,
+		Height: 760,
+		MinWidth: 980,
+		MinHeight: 640,
+		Assets: assets,
+		BackgroundColour: &options.RGBA{R: 13, G: 17, B: 23, A: 1},
+		OnStartup: app.Startup,
+		Bind: []interface{}{app},
+		Windows: &windows.Options{Theme: windows.SystemDefault},
+	})
+	if err != nil {
+		logger.Error("GUI exited with error: %v", err)
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
